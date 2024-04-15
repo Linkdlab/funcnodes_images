@@ -1,0 +1,385 @@
+# folder tree:
+
+-funcnodes_images
+  - imagecontainer.py
+  - _numpy.py
+  - _opencv.py
+  - _pillow.py
+  - __init__.py
+
+
+
+# imagecontainer.py
+
+from abc import ABC, abstractmethod
+from typing import Type
+import numpy as np
+from typing import Any, TYPE_CHECKING, Generic, TypeVar, Callable, Dict
+import io
+from PIL import Image
+import os
+
+
+if TYPE_CHECKING:
+    from ._numpy import NumpyImageFormat
+    from ._pillow import PillowImageFormat
+
+
+T = TypeVar("T")
+
+
+IMAGE_FORMATS: Dict[str, Type["ImageFormat"]] = {}
+
+
+class ImageFormat(ABC, Generic[T]):  # noqa: F821
+    _to_converters: Dict[
+        "ImageFormat", Dict["ImageFormat", Callable[["ImageFormat"], "ImageFormat"]]
+    ] = {}
+
+    def __init__(self, data: T):
+        self._data: T = data
+
+    @property
+    def data(self) -> T:
+        return self.get_data_copy()
+
+    @abstractmethod
+    def get_data_copy(self) -> T:
+        pass
+
+    def to(self, cls: Type["ImageFormat"] | str) -> "ImageFormat":
+        if isinstance(cls, str):
+            cls = IMAGE_FORMATS[cls]
+        if self.__class__ == cls:
+            return self
+        if cls in ImageFormat._to_converters[self.__class__]:
+            return self._to_converters[self.__class__][cls](self)
+
+    @classmethod
+    def add_to_converter(
+        self_cls,
+        other_cls: Type["ImageFormat"],
+        converter: Callable[["ImageFormat"], "ImageFormat"],
+    ):
+        if self_cls not in ImageFormat._to_converters:
+            ImageFormat._to_converters[self_cls] = {}
+        ImageFormat._to_converters[self_cls][other_cls] = converter
+
+    def get_to_converter(
+        self, cls: Type["ImageFormat"]
+    ) -> Callable[["ImageFormat"], "ImageFormat"]:
+        if self.__class__ not in ImageFormat._to_converters:
+            ImageFormat._to_converters[self.__class__] = {}
+        return ImageFormat._to_converters[self.__class__].get(cls)
+
+    def __getattribute__(self, name: str) -> Any:
+        try:
+            return super().__getattribute__(name)
+        except AttributeError:
+            if name.startswith("to_"):
+                _to = name[3:]
+                if _to in IMAGE_FORMATS:
+                    other = IMAGE_FORMATS[_to]
+                    conv = self.get_to_converter(other)
+                    if conv:
+                        return lambda: conv(self)
+            raise
+
+    @classmethod
+    def from_array(cls, data: np.ndarray):
+        from ._numpy import NumpyImageFormat
+
+        return NumpyImageFormat(data).to(cls)
+
+    def to_array(self) -> np.ndarray:
+        return self.to_np.data
+
+    @classmethod
+    def from_file(cls, path: str):
+        from ._pillow import PillowImageFormat
+
+        img = Image.open(path)
+        return PillowImageFormat(img).to(cls)
+
+    @classmethod
+    def from_bytes(cls, data: bytes):
+        from ._pillow import PillowImageFormat
+
+        img = Image.open(io.BytesIO(data))
+        return PillowImageFormat(img).to(cls)
+
+    def to_jpeg(self, quality=0.75) -> bytes:
+        img = self.to_img().data
+        img_byte_array = io.BytesIO()
+        img.save(img_byte_array, format="JPEG", quality=quality)
+        return img_byte_array.getvalue()
+
+    def to_thumbnail(self, size: tuple) -> "ImageFormat[T]":
+        img: Image = self.to_img().data
+        img.thumbnail(size)
+        return self.__class__.from_array(np.array(img))
+
+    def resize(
+        self,
+        w: int = None,
+        h: int = None,
+    ) -> "ImageFormat[T]":
+        if w is None and h is None:
+            raise ValueError("At least one of w or h must be given")
+        img: Image = self.to_img().data
+
+        if w is None:
+            ratio = h / img.height
+            new_x, new_y = int(img.width * ratio), h
+        elif h is None:
+            ratio = w / img.width
+            new_x, new_y = w, int(img.height * ratio)
+
+        else:
+            new_x, new_y = w, h
+
+        img = img.resize((new_x, new_y))
+        return self.__class__.from_array(np.array(img))
+
+
+def register_imageformat(
+    imageformat: Type[ImageFormat], key: str, overwrite=False, _raise=True
+):
+    if not issubclass(imageformat, ImageFormat):
+        raise ValueError("format must be a subclass of ImageFormat")
+    if key in IMAGE_FORMATS:
+        if IMAGE_FORMATS[key] == imageformat:
+            return
+        if not overwrite:
+            if _raise:
+                raise ValueError(
+                    f"key '{key} 'already exists in image_formats as {IMAGE_FORMATS[key]}"
+                )
+            else:
+                return
+    IMAGE_FORMATS[key] = imageformat
+
+
+def get_format(key: str) -> Type[ImageFormat]:
+    return IMAGE_FORMATS[key]
+
+
+# _numpy.py
+
+from .imagecontainer import ImageFormat, register_imageformat
+
+
+import numpy as np
+
+
+class NumpyImageFormat(ImageFormat[np.ndarray]):
+    def __init__(self, arr: np.ndarray) -> None:
+        # check if arr is a numpy array
+        if not isinstance(arr, np.ndarray):
+            raise TypeError("arr must be a numpy array")
+        # make shure arr has 3 dimensions or fail
+
+        if len(arr.shape) != 3:
+            if len(arr.shape) == 2:
+                arr = np.expand_dims(arr, axis=2)
+            else:
+                raise ValueError("arr must have 3 dimensions")
+
+        # allow 3 or 1 channel images
+        if arr.shape[2] != 3 and arr.shape[2] != 1:
+            raise ValueError("arr must have 3 or 1 channels")
+
+        super().__init__(arr)
+
+    def get_data_copy(self) -> np.ndarray:
+        return self._data.copy()
+
+    def to_uint8(self) -> np.ndarray:
+        d = self.data
+        if d.dtype == np.uint8:
+            return d
+
+        _max = d.max()
+        _min = d.min()
+
+        # if in range 0-255
+        if _max <= 255 and _min >= 0 and _max > 1:
+            return d.astype(np.uint8)
+
+        # if not in range 0-1 -> normalize
+        if _max > 1 or _min < 0:
+            d = d - _min
+            if _max != _min:
+                d = d / (_max - _min)
+
+        return (d * 255).astype(np.uint8)
+
+    def to_rgb_uint8(self) -> np.ndarray:
+        d = self.to_uint8()
+        if d.shape[2] == 3:
+            return d
+
+        return np.repeat(d, 3, axis=2)
+
+    def to_array(self) -> np.ndarray:
+        return self.get_data_copy()
+
+
+register_imageformat(NumpyImageFormat, "np")
+
+
+# _opencv.py
+
+import cv2
+import numpy as np
+from .imagecontainer import ImageFormat, register_imageformat
+from ._numpy import NumpyImageFormat
+from ._pillow import PillowImageFormat
+
+
+def _conv_colorspace(data: np.ndarray, from_: str, to: str) -> np.ndarray:
+    if from_ == to:
+        return data
+    conv = f"{from_}2{to}"
+    if not hasattr(cv2, conv):
+        raise ValueError(f"Conversion from {from_} to {to} not supported")
+    return cv2.cvtColor(data, getattr(cv2, conv))
+
+
+class OpenCVImageFormat(ImageFormat[np.ndarray]):
+    def __init__(self, arr: np.ndarray, colorspace: str = "BGR"):
+        if not isinstance(arr, np.ndarray):
+            raise TypeError("arr must be a numpy array")
+        if arr.ndim != 3 or (arr.shape[2] != 3 and arr.shape[2] != 1):
+            raise ValueError(
+                "arr must have 3 dimensions and 3 or 1 channels in BGR format"
+            )
+
+        if colorspace != "BGR":
+            arr = _conv_colorspace(arr, colorspace, "BGR")
+
+        super().__init__(arr)
+
+    def get_data_copy(self) -> np.ndarray:
+        return self.data.copy()
+
+    def to_to_colorspace(self, colorspace: str) -> np.ndarray:
+        return _conv_colorspace(self.data, "BGR", colorspace)
+
+    def to_jpeg(self, quality=0.75) -> bytes:
+        return cv2.imencode(
+            ".jpg", self.data, [int(cv2.IMWRITE_JPEG_QUALITY), int(quality * 100)]
+        )[1].tobytes()
+
+    def to_thumbnail(self, size: tuple) -> "OpenCVImageFormat":
+        cur_x, cur_y = self.data.shape[:2]
+        ratio = min(size[0] / cur_x, size[1] / cur_y)
+        new_x, new_y = int(cur_x * ratio), int(cur_y * ratio)
+        return OpenCVImageFormat(
+            cv2.resize(
+                self._data,
+                (new_x, new_y),
+            )
+        )
+
+    def resize(
+        self,
+        w: int = None,
+        h: int = None,
+    ) -> "OpenCVImageFormat":
+        if w is None and h is None:
+            raise ValueError("At least one of w or h must be given")
+        cur_x, cur_y = self.data.shape[:2]
+        if w is None:
+            ratio = h / cur_y
+            new_x, new_y = int(cur_x * ratio), h
+        elif h is None:
+            ratio = w / cur_x
+            new_x, new_y = w, int(cur_y * ratio)
+        else:
+            new_x, new_y = w, h
+
+        return OpenCVImageFormat(
+            cv2.resize(
+                self.data,
+                (new_x, new_y),
+            )
+        )
+
+
+register_imageformat(OpenCVImageFormat, "cv2")
+
+
+def cv2_to_np(cv2_img: OpenCVImageFormat) -> NumpyImageFormat:
+    return NumpyImageFormat(cv2_img.to_colorspace("RGB"))
+
+
+def np_to_cv2(np_img: NumpyImageFormat) -> OpenCVImageFormat:
+    return OpenCVImageFormat(np_img.to_rgb_uint8(), colorspace="RGB")
+
+
+OpenCVImageFormat.add_to_converter(NumpyImageFormat, cv2_to_np)
+NumpyImageFormat.add_to_converter(OpenCVImageFormat, np_to_cv2)
+
+
+def cv2_to_pil(cv2_img: OpenCVImageFormat) -> PillowImageFormat:
+    return cv2_img.to_np().to_img()
+
+def pil_to_cv2(pil_img: PillowImageFormat) -> OpenCVImageFormat:
+    return pil_img.to_np().to_cv2()
+
+
+# _pillow.py
+
+from PIL import Image
+from typing import TYPE_CHECKING, Generic
+import numpy as np
+from .imagecontainer import ImageFormat, register_imageformat
+from ._numpy import NumpyImageFormat
+
+
+class PillowImageFormat(ImageFormat[Image.Image]):
+    def __init__(self, img: Image.Image) -> None:
+        if not isinstance(img, Image.Image):
+            raise TypeError("img must be a PIL Image")
+        super().__init__(img)
+
+    def to_array(self) -> np.ndarray:
+        return np.array(self._data)
+
+    def get_data_copy(self) -> Image.Image:
+        return self._data.copy()
+
+
+def pillow_to_numpy(img: PillowImageFormat) -> NumpyImageFormat:
+    return NumpyImageFormat(np.array(img.data))
+
+
+PillowImageFormat.add_to_converter(NumpyImageFormat, pillow_to_numpy)
+
+
+def numpy_to_pil(img: NumpyImageFormat) -> PillowImageFormat:
+    return PillowImageFormat(Image.fromarray(img.to_rgb_uint8()))
+
+
+NumpyImageFormat.add_to_converter(PillowImageFormat, numpy_to_pil)
+
+
+register_imageformat(PillowImageFormat, "img")
+
+
+# __init__.py
+
+from .imagecontainer import register_imageformat, get_format, ImageFormat
+from ._numpy import NumpyImageFormat
+from ._pillow import PillowImageFormat
+
+__all__ = [
+    "register_imageformat",
+    "NumpyImageFormat",
+    "get_format",
+    "PillowImageFormat",
+    "ImageFormat",
+]
+
+__version__ = "0.1.0"
