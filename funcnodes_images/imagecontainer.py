@@ -1,11 +1,11 @@
 from abc import ABC, abstractmethod
-from typing import Type
+from typing import Type, Optional
 import numpy as np
 from typing import Any, TYPE_CHECKING, Generic, TypeVar, Callable, Dict
 import io
 from PIL import Image
 import os
-from .utils import calc_new_size
+from .utils import calc_new_size, calc_crop_values
 
 
 if TYPE_CHECKING:
@@ -33,6 +33,14 @@ class ImageFormat(ABC, Generic[T]):  # noqa: F821
 
     @abstractmethod
     def get_data_copy(self) -> T:
+        pass
+
+    @abstractmethod
+    def width(self) -> int:
+        pass
+
+    @abstractmethod
+    def height(self) -> int:
         pass
 
     def to(self, cls: Type["ImageFormat"] | str) -> "ImageFormat":
@@ -120,8 +128,16 @@ class ImageFormat(ABC, Generic[T]):  # noqa: F821
         img = img.resize((new_x, new_y))
         return self.__class__.from_array(np.array(img))
 
-    def crop(self, x1, y1, x2, y2) -> "ImageFormat[T]":
+    def crop(
+        self,
+        x1: Optional[int] = None,
+        y1: Optional[int] = None,
+        x2: Optional[int] = None,
+        y2: Optional[int] = None,
+    ) -> "ImageFormat[T]":
         img: Image = self.to_img().data
+        x1, y1, x2, y2 = calc_crop_values(img.width, img.height, x1, y1, x2, y2)
+
         img = img.crop((x1, y1, x2, y2))
         return self.__class__.from_array(np.array(img))
 

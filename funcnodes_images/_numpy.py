@@ -26,6 +26,12 @@ class NumpyImageFormat(ImageFormat[np.ndarray]):
     def get_data_copy(self) -> np.ndarray:
         return self._data.copy()
 
+    def width(self) -> int:
+        return self._data.shape[1]
+
+    def height(self) -> int:
+        return self._data.shape[0]
+
     def to_uint8(self) -> np.ndarray:
         d = self.data
         if d.dtype == np.uint8:

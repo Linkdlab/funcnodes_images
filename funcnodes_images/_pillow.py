@@ -17,6 +17,12 @@ class PillowImageFormat(ImageFormat[Image.Image]):
     def get_data_copy(self) -> Image.Image:
         return self._data.copy()
 
+    def width(self) -> int:
+        return self._data.width
+
+    def height(self) -> int:
+        return self._data.height
+
 
 def pillow_to_numpy(img: PillowImageFormat) -> NumpyImageFormat:
     return NumpyImageFormat(np.array(img.data))
