@@ -25,6 +25,8 @@ def imageFormatEncoder(obj: ImageFormat, preview=False):
 
 fn.JSONEncoder.add_encoder(imageFormatEncoder)
 
+NODE_SHELF = nodes.NODE_SHELF
+
 __all__ = [
     "register_imageformat",
     "NumpyImageFormat",
@@ -32,9 +34,9 @@ __all__ = [
     "PillowImageFormat",
     "ImageFormat",
     "nodes",
+    "FUNCNODES_RENDER_OPTIONS",
+    "NODE_SHELF",
 ]
 
 
 __version__ = "0.1.0"
-
-NODE_SHELF = nodes.NODE_SHELF
