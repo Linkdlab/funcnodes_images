@@ -3,7 +3,7 @@ from funcnodes_images import ImageFormat
 from PIL import Image
 from typing import Optional
 import io
-from ._pillow import PillowImageFormat
+from ._pillow import PillowImageFormat, NumpyImageFormat
 from .utils import calc_crop_values
 
 
@@ -167,6 +167,72 @@ class CropImage(fn.Node):
         return out
 
 
+class ToArray(fn.Node):
+    node_id = "image.to_array"
+    node_name = "To Array"
+
+    img = fn.NodeInput(
+        id="img",
+        type=ImageFormat,
+    )
+
+    array = fn.NodeOutput(
+        id="array",
+        type="numpy.ndarray",
+    )
+
+    async def func(self, img: ImageFormat):
+        out = img.to_array()
+        self.get_output("array").value = out
+
+        return out
+
+
+class Dimensions(fn.Node):
+    node_id = "image.dimensions"
+    node_name = "Dimensions"
+
+    img = fn.NodeInput(
+        id="img",
+        type=ImageFormat,
+    )
+
+    width = fn.NodeOutput(
+        id="width",
+        type=int,
+    )
+
+    height = fn.NodeOutput(
+        id="height",
+        type=int,
+    )
+
+    async def func(self, img: ImageFormat):
+        self.get_output("width").value = img.width()
+        self.get_output("height").value = img.height()
+        return img.width(), img.height()
+
+
+class FromArray(fn.Node):
+    node_id = "image.from_array"
+    node_name = "From Array"
+
+    data = fn.NodeInput(
+        id="data",
+        type="numpy.ndarray",
+    )
+
+    img = fn.NodeOutput(
+        id="img",
+        type=ImageFormat,
+    )
+
+    async def func(self, data):
+        img = NumpyImageFormat(data)
+        self.get_output("img").value = img
+        return img
+
+
 NODE_SHELF = fn.Shelf(
     name="Images",
     nodes=[
@@ -175,6 +241,8 @@ NODE_SHELF = fn.Shelf(
         FromBytes,
         ScaleImage,
         CropImage,
+        ToArray,
+        Dimensions,
     ],
     subshelves=[],
     description="Basic Image processing nodes",
