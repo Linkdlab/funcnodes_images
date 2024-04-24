@@ -30,3 +30,10 @@ class TestImageFormat(unittest.TestCase):
         pillow_format = PillowImageFormat(img)
         numpy_format = pillow_format.to("np")
         self.assertIsInstance(numpy_format, NumpyImageFormat)
+
+    def test_to_thumbnail(self):
+        img = Image.new("RGB", (100, 50))
+        pillow_format = PillowImageFormat(img)
+        thumbnail = pillow_format.to_thumbnail((50, 50))
+        self.assertIsInstance(thumbnail.data, Image.Image)
+        self.assertEqual(thumbnail.data.size, (50, 25))
