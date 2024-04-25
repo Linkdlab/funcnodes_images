@@ -303,6 +303,7 @@ NODE_SHELF = fn.Shelf(
         ScaleImage,
         CropImage,
         ToArray,
+        FromArray,
         Dimensions,
         get_channels,
         histograms,

@@ -168,3 +168,11 @@ class TestNodes(unittest.IsolatedAsyncioTestCase):
         np.testing.assert_equal(
             blue, np.histogram(self.img_arr[:, :, 2], bins=256, range=(0, 255))[0]
         )
+
+    async def test_from_array(self):
+        fromarray = fnimg.nodes.FromArray()
+        fromarray.get_input("data").value = self.img_arr
+        await fromarray
+        img: fnimg.NumpyImageFormat = fromarray.get_output("img").value
+        self.assertEqual(img.to_array().shape, self.img_arr.shape)
+        np.testing.assert_equal(img.to_array(), self.img_arr)

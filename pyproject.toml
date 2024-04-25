@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "funcnodes_images"
-version = "0.1.14"
+version = "0.1.15"
 description = ""
 authors = ["Julian Kimmig <julian.kimmig@gmx.net>"]
 readme = "README.md"
