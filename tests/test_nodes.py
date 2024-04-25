@@ -142,3 +142,29 @@ class TestNodes(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(np.all(green.to_array()[:, :, 2] == 0))
         self.assertTrue(np.all(blue.to_array()[:, :, 0] == 0))
         self.assertTrue(np.all(blue.to_array()[:, :, 1] == 0))
+
+    async def test_get_histograms(self):
+        hist = fnimg.nodes.histograms()
+        hist.get_input("img").value = fnimg.PillowImageFormat(self.img)
+        await hist
+        red: np.ndarray = hist.get_output("red").value
+        green: np.ndarray = hist.get_output("green").value
+        blue: np.ndarray = hist.get_output("blue").value
+
+        self.assertEqual(red.shape, (256,))
+        self.assertEqual(green.shape, (256,))
+        self.assertEqual(blue.shape, (256,))
+
+        self.assertEqual(red.sum(), 10000)
+        self.assertEqual(green.sum(), 10000)
+        self.assertEqual(blue.sum(), 10000)
+
+        np.testing.assert_equal(
+            red, np.histogram(self.img_arr[:, :, 0], bins=256, range=(0, 255))[0]
+        )
+        np.testing.assert_equal(
+            green, np.histogram(self.img_arr[:, :, 1], bins=256, range=(0, 255))[0]
+        )
+        np.testing.assert_equal(
+            blue, np.histogram(self.img_arr[:, :, 2], bins=256, range=(0, 255))[0]
+        )

@@ -252,7 +252,6 @@ class FromArray(fn.Node):
 def get_channels(
     img: ImageFormat, as_rgb: bool = False
 ) -> Tuple[NumpyImageFormat, NumpyImageFormat, NumpyImageFormat]:
-
     rgb = img.to_np().data
     if rgb.shape[2] == 1:
         r = g = b = rgb[:, :, 0]
@@ -270,6 +269,31 @@ def get_channels(
     return NumpyImageFormat(rz), NumpyImageFormat(gz), NumpyImageFormat(bz)
 
 
+@fn.NodeDecorator(
+    id="image.get_histograms",
+    name="Get Histograms",
+    outputs=[
+        {
+            "name": "red",
+        },
+        {
+            "name": "green",
+        },
+        {
+            "name": "blue",
+        },
+    ],
+)
+def histograms(img: ImageFormat) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    data = img.to_np().to_rgb_uint8()
+
+    return (
+        np.histogram(data[:, :, 0], bins=256, range=(0, 256))[0],
+        np.histogram(data[:, :, 1], bins=256, range=(0, 256))[0],
+        np.histogram(data[:, :, 2], bins=256, range=(0, 256))[0],
+    )
+
+
 NODE_SHELF = fn.Shelf(
     name="Images",
     nodes=[
@@ -281,6 +305,7 @@ NODE_SHELF = fn.Shelf(
         ToArray,
         Dimensions,
         get_channels,
+        histograms,
     ],
     subshelves=[],
     description="Basic Image processing nodes",
