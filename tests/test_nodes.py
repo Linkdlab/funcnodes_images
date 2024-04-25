@@ -59,3 +59,86 @@ class TestNodes(unittest.IsolatedAsyncioTestCase):
         await scale
         img: fnimg.PillowImageFormat = scale.get_output("scaled_img").value
         self.assertEqual(img.to_array().shape, (50, 50, 3))
+
+    async def test_get_channels_from_rgb(self):
+        get_channels = fnimg.nodes.get_channels()
+        # testnormal
+        get_channels.get_input("img").value = fnimg.PillowImageFormat(self.img)
+        await get_channels
+        red: fnimg.NumpyImageFormat = get_channels.get_output("red").value
+        green: fnimg.NumpyImageFormat = get_channels.get_output("green").value
+        blue: fnimg.NumpyImageFormat = get_channels.get_output("blue").value
+
+        self.assertEqual(red.to_array().shape, (100, 100, 1))
+        self.assertEqual(green.to_array().shape, (100, 100, 1))
+        self.assertEqual(blue.to_array().shape, (100, 100, 1))
+        np.testing.assert_equal(red.to_array(), self.img_arr[:, :, [0]])
+        np.testing.assert_equal(green.to_array(), self.img_arr[:, :, [1]])
+        np.testing.assert_equal(blue.to_array(), self.img_arr[:, :, [2]])
+
+        get_channels.get_input("img").value = fnimg.PillowImageFormat(self.img)
+        get_channels.get_input("as_rgb").value = True
+        await get_channels
+        red: fnimg.NumpyImageFormat = get_channels.get_output("red").value
+        green: fnimg.NumpyImageFormat = get_channels.get_output("green").value
+        blue: fnimg.NumpyImageFormat = get_channels.get_output("blue").value
+
+        self.assertEqual(red.to_array().shape, (100, 100, 3))
+        self.assertEqual(green.to_array().shape, (100, 100, 3))
+        self.assertEqual(blue.to_array().shape, (100, 100, 3))
+
+        self.assertTrue(np.all(red.to_array()[:, :, 0] == self.img_arr[:, :, 0]))
+        self.assertTrue(np.all(green.to_array()[:, :, 1] == self.img_arr[:, :, 1]))
+        self.assertTrue(np.all(blue.to_array()[:, :, 2] == self.img_arr[:, :, 2]))
+        self.assertTrue(np.all(red.to_array()[:, :, 1] == 0))
+        self.assertTrue(np.all(red.to_array()[:, :, 2] == 0))
+        self.assertTrue(np.all(green.to_array()[:, :, 0] == 0))
+        self.assertTrue(np.all(green.to_array()[:, :, 2] == 0))
+        self.assertTrue(np.all(blue.to_array()[:, :, 0] == 0))
+        self.assertTrue(np.all(blue.to_array()[:, :, 1] == 0))
+
+    async def test_get_channels_from_bw(self):
+        # bw image
+        get_channels = fnimg.nodes.get_channels()
+        get_channels.get_input("img").value = fnimg.NumpyImageFormat(
+            self.img_arr[:, :, 0]
+        )
+        await get_channels
+        red: fnimg.NumpyImageFormat = get_channels.get_output("red").value
+        green: fnimg.NumpyImageFormat = get_channels.get_output("green").value
+        blue: fnimg.NumpyImageFormat = get_channels.get_output("blue").value
+
+        self.assertEqual(red.to_array().shape, (100, 100, 1))
+        self.assertEqual(green.to_array().shape, (100, 100, 1))
+        self.assertEqual(blue.to_array().shape, (100, 100, 1))
+        np.testing.assert_equal(red.to_array(), self.img_arr[:, :, [0]])
+        np.testing.assert_equal(green.to_array(), self.img_arr[:, :, [0]])
+        np.testing.assert_equal(blue.to_array(), self.img_arr[:, :, [0]])
+
+        get_channels.get_input("img").value = fnimg.NumpyImageFormat(
+            self.img_arr[:, :, 0]
+        )
+        get_channels.get_input("as_rgb").value = True
+        await get_channels
+        red: fnimg.NumpyImageFormat = get_channels.get_output("red").value
+        green: fnimg.NumpyImageFormat = get_channels.get_output("green").value
+        blue: fnimg.NumpyImageFormat = get_channels.get_output("blue").value
+
+        self.assertEqual(red.to_array().shape, (100, 100, 3))
+        self.assertEqual(green.to_array().shape, (100, 100, 3))
+        self.assertEqual(blue.to_array().shape, (100, 100, 3))
+
+        np.testing.assert_equal(green.to_array()[:, :, 1], red.to_array()[:, :, 0])
+        np.testing.assert_equal(blue.to_array()[:, :, 2], red.to_array()[:, :, 0])
+        np.testing.assert_equal(green.to_array()[:, :, 1], blue.to_array()[:, :, 2])
+
+        self.assertTrue(np.all(red.to_array()[:, :, 0] == self.img_arr[:, :, 0]))
+
+        self.assertTrue(np.all(green.to_array()[:, :, 1] == self.img_arr[:, :, 0]))
+        self.assertTrue(np.all(blue.to_array()[:, :, 2] == self.img_arr[:, :, 0]))
+        self.assertTrue(np.all(red.to_array()[:, :, 1] == 0))
+        self.assertTrue(np.all(red.to_array()[:, :, 2] == 0))
+        self.assertTrue(np.all(green.to_array()[:, :, 0] == 0))
+        self.assertTrue(np.all(green.to_array()[:, :, 2] == 0))
+        self.assertTrue(np.all(blue.to_array()[:, :, 0] == 0))
+        self.assertTrue(np.all(blue.to_array()[:, :, 1] == 0))

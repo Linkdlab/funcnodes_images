@@ -1,10 +1,11 @@
 import funcnodes as fn
 from funcnodes_images import ImageFormat
 from PIL import Image
-from typing import Optional
+from typing import Optional, Tuple
 import io
 from ._pillow import PillowImageFormat, NumpyImageFormat
 from .utils import calc_crop_values
+import numpy as np
 
 
 class ShowImage(fn.Node):
@@ -233,6 +234,42 @@ class FromArray(fn.Node):
         return img
 
 
+@fn.NodeDecorator(
+    id="image.get_channels",
+    name="Get Channels",
+    outputs=[
+        {
+            "name": "red",
+        },
+        {
+            "name": "green",
+        },
+        {
+            "name": "blue",
+        },
+    ],
+)
+def get_channels(
+    img: ImageFormat, as_rgb: bool = False
+) -> Tuple[NumpyImageFormat, NumpyImageFormat, NumpyImageFormat]:
+
+    rgb = img.to_np().data
+    if rgb.shape[2] == 1:
+        r = g = b = rgb[:, :, 0]
+    else:
+        r, g, b = rgb[:, :, 0], rgb[:, :, 1], rgb[:, :, 2]
+    if not as_rgb:
+        return NumpyImageFormat(r), NumpyImageFormat(g), NumpyImageFormat(b)
+    rz = np.zeros_like(r, shape=(r.shape[0], r.shape[1], 3))
+    rz[:, :, 0] = r
+    gz = np.zeros_like(g, shape=(g.shape[0], g.shape[1], 3))
+    gz[:, :, 1] = g
+    bz = np.zeros_like(b, shape=(b.shape[0], b.shape[1], 3))
+    bz[:, :, 2] = b
+
+    return NumpyImageFormat(rz), NumpyImageFormat(gz), NumpyImageFormat(bz)
+
+
 NODE_SHELF = fn.Shelf(
     name="Images",
     nodes=[
@@ -243,6 +280,7 @@ NODE_SHELF = fn.Shelf(
         CropImage,
         ToArray,
         Dimensions,
+        get_channels,
     ],
     subshelves=[],
     description="Basic Image processing nodes",
