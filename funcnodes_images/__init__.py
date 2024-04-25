@@ -4,7 +4,7 @@ from ._pillow import PillowImageFormat
 import funcnodes as fn
 from exposedfunctionality.function_parser.types import add_type
 from . import image_nodes as nodes
-
+import funcnodes_numpy as fn_numpy  # noqa: F401 # import for type hinting
 
 add_type(ImageFormat, "ImageFormat")
 
