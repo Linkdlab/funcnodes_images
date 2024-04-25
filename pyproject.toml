@@ -1,13 +1,13 @@
 [tool.poetry]
 name = "funcnodes_images"
-version = "0.1.12"
+version = "0.1.13"
 description = ""
 authors = ["Julian Kimmig <julian.kimmig@gmx.net>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.11"
-funcnodes = "^0.1.30"
+funcnodes = "^0.1.40"
 numpy = "^1.26.4"
 pillow = "^10.3.0"
 funcnodes-numpy = "^0.1.51"

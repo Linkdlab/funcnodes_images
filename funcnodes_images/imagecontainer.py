@@ -7,6 +7,7 @@ from PIL import Image
 import os
 from .utils import calc_new_size, calc_crop_values
 
+from funcnodes.config import update_render_options
 
 if TYPE_CHECKING:
     from ._numpy import NumpyImageFormat
@@ -166,6 +167,14 @@ def register_imageformat(
             else:
                 return
     IMAGE_FORMATS[key] = imageformat
+
+    update_render_options(
+        {
+            "typemap": {
+                imageformat: "image",
+            }
+        }
+    )
 
 
 def get_format(key: str) -> Type[ImageFormat]:
