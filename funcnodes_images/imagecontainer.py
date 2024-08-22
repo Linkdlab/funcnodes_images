@@ -105,11 +105,15 @@ class ImageFormat(ABC, Generic[T]):  # noqa: F821
     def from_bytes(cls, data: bytes):
         from ._pillow import PillowImageFormat
 
-        img = Image.open(io.BytesIO(data))
+        buff = io.BytesIO(data)
+        img = Image.open(buff)
+        img.load()
+        buff.close()
         return PillowImageFormat(img).to(cls)
 
     def to_jpeg(self, quality=75) -> bytes:
         img: Image = self.to_img().data
+        img = img.convert("RGB")
         img_byte_array = io.BytesIO()
         img.save(img_byte_array, format="JPEG", quality=int(quality))
         return img_byte_array.getvalue()

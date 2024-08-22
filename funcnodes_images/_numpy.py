@@ -18,8 +18,10 @@ class NumpyImageFormat(ImageFormat[np.ndarray]):
                 raise ValueError("arr must have 3 dimensions")
 
         # allow 3 or 1 channel images
-        if arr.shape[2] != 3 and arr.shape[2] != 1:
-            raise ValueError("arr must have 3 or 1 channels")
+        if arr.shape[2] != 3 and arr.shape[2] != 1 and arr.shape[2] != 4:
+            raise ValueError(
+                f"arr must have 1,3 or 4 channels but has shape {arr.shape}"
+            )
 
         super().__init__(arr)
 
@@ -52,12 +54,34 @@ class NumpyImageFormat(ImageFormat[np.ndarray]):
 
         return (d * 255).astype(np.uint8)
 
+    def to_rgb_or_rgba_uint8(self) -> np.ndarray:
+        d = self.to_uint8()
+        if d.shape[2] == 3 or d.shape[2] == 4:
+            return d
+
+        return np.repeat(d, 3, axis=2)
+
     def to_rgb_uint8(self) -> np.ndarray:
         d = self.to_uint8()
         if d.shape[2] == 3:
             return d
 
+        if d.shape[2] == 4:
+            return d[:, :, :3]
+
         return np.repeat(d, 3, axis=2)
+
+    def to_rgba_uint8(self) -> np.ndarray:
+        d = self.to_uint8()
+        if d.shape[2] == 4:
+            return d
+
+        if d.shape[2] == 3:
+            return np.concatenate(
+                [d, np.full(d.shape[:2] + (1,), 255, dtype=np.uint8)], axis=2
+            )
+
+        return np.repeat(d, 4, axis=2)
 
     def to_array(self) -> np.ndarray:
         return self.get_data_copy()

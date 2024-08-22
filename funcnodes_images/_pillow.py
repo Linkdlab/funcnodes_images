@@ -32,7 +32,7 @@ PillowImageFormat.add_to_converter(NumpyImageFormat, pillow_to_numpy)
 
 
 def numpy_to_pil(img: NumpyImageFormat) -> PillowImageFormat:
-    return PillowImageFormat(Image.fromarray(img.to_rgb_uint8()))
+    return PillowImageFormat(Image.fromarray(img.to_rgb_or_rgba_uint8()))
 
 
 NumpyImageFormat.add_to_converter(PillowImageFormat, numpy_to_pil)

@@ -71,10 +71,8 @@ class FromBytes(fn.Node):
     )
 
     async def func(self, data: bytes):
-        buff = io.BytesIO(data)
-        img = Image.open(buff)
-        self.get_output("img").value = PillowImageFormat(img)
-        buff.close()
+        img = PillowImageFormat.from_bytes(data)
+        self.get_output("img").value = img
         return img
 
 
