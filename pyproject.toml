@@ -15,7 +15,12 @@ funcnodes-numpy = "*"
 [tool.poetry.group.dev.dependencies]
 opencv-python-headless = "^4.9.0.80"
 pytest = "*"
+pre-commit = "*"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.plugins."funcnodes.module"]
+module = "funcnodes_images"
+shelf = "funcnodes_images:NODE_SHELF"
