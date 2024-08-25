@@ -430,18 +430,18 @@ pgp = ["gpg"]
 
 [[package]]
 name = "exposedfunctionality"
-version = "0.3.7"
+version = "0.3.8"
 description = "tool to expose functionalities to multiple tools"
 optional = false
-python-versions = "<4.0,>=3.9"
+python-versions = ">=3.9"
 files = [
-    {file = "exposedfunctionality-0.3.7-py3-none-any.whl", hash = "sha256:3186a6898e711f9f4be33383d47aa727148e563abd0a06a9cedef2828d9a252a"},
-    {file = "exposedfunctionality-0.3.7.tar.gz", hash = "sha256:f214041421feb2ff8a2fb6b1b88ac11a4b5ba465743ae9886aa6eb3ae53b57e5"},
+    {file = "exposedfunctionality-0.3.8-py3-none-any.whl", hash = "sha256:84e773c7d2323cef75cfe1fb53d45a041656caf27d5aed7aa4eae95edb7fe078"},
+    {file = "exposedfunctionality-0.3.8.tar.gz", hash = "sha256:44bf803c449c57e04498b209a5f8e6a3873c1a3903a81e1528f6be60bf756356"},
 ]
 
 [package.dependencies]
-pyyaml = ">=6,<7"
-typing-extensions = ">=4.10.0,<5.0.0"
+pyyaml = "*"
+typing-extensions = "*"
 
 [[package]]
 name = "fastjsonschema"
@@ -475,17 +475,17 @@ typing = ["typing-extensions (>=4.8)"]
 
 [[package]]
 name = "funcnodes"
-version = "0.3.2"
+version = "0.3.3"
 description = "funcnodes"
 optional = false
 python-versions = "<4.0,>=3.11"
 files = [
-    {file = "funcnodes-0.3.2-py3-none-any.whl", hash = "sha256:134af44b4a368924187490fae00fb7dda8667ef89438f717ab6c30a2fa9bb486"},
-    {file = "funcnodes-0.3.2.tar.gz", hash = "sha256:cef81b6f85065e91aee1fc1652630acc0d9e75b6e3774599d349c9129637db6a"},
+    {file = "funcnodes-0.3.3-py3-none-any.whl", hash = "sha256:905ddc9cc6db8bed6c660010f344ef7d77396d76dae1ddae6a5d346052b62e40"},
+    {file = "funcnodes-0.3.3.tar.gz", hash = "sha256:a5ba6ae0f02e1eea1c7dfd86e5d616416e5d75bedcc9901eb06556a61b8eb0bc"},
 ]
 
 [package.dependencies]
-exposedfunctionality = ">=0.3.7"
+exposedfunctionality = ">=0.3.8"
 funcnodes-basic = "*"
 funcnodes-react-flow = ">=0.1.0,<0.2.0"
 networkx = ">=3.3,<4.0"
@@ -498,13 +498,13 @@ websockets = ">=12.0,<13.0"
 
 [[package]]
 name = "funcnodes-basic"
-version = "0.1.4"
+version = "0.1.5"
 description = "Basic functionalities for funcnodes"
 optional = false
 python-versions = "<4.0,>=3.11"
 files = [
-    {file = "funcnodes_basic-0.1.4-py3-none-any.whl", hash = "sha256:8516856bd003a37f792e99201beca14713ff20008653dd8d5966a18239fc6e6a"},
-    {file = "funcnodes_basic-0.1.4.tar.gz", hash = "sha256:ec7d56f5276523d03299c268508c59786fdd1bed5a51c98b4a7f772f32bfb2ae"},
+    {file = "funcnodes_basic-0.1.5-py3-none-any.whl", hash = "sha256:a3453d0c74cad1bdb927de14db57a71cbea5515d4408b2b4383fd71fc8491936"},
+    {file = "funcnodes_basic-0.1.5.tar.gz", hash = "sha256:585dd398b56993b0d3834ea01629df3eb3d88a1dc51c470272490394fc5c39a2"},
 ]
 
 [package.dependencies]
@@ -512,19 +512,30 @@ funcnodes = "*"
 requests = "*"
 
 [[package]]
-name = "funcnodes-numpy"
-version = "0.2.1"
+name = "funcnodes-module"
+version = "0.1.6"
 description = ""
 optional = false
 python-versions = "<4.0,>=3.11"
 files = [
-    {file = "funcnodes_numpy-0.2.1-py3-none-any.whl", hash = "sha256:6c56e20ca621ca485b3787327dfb0d1faddca94ee53f3518911c355194491b9c"},
-    {file = "funcnodes_numpy-0.2.1.tar.gz", hash = "sha256:70c06049f34b61cf3ebac12e4ce0e634f1ed25b680de4339384ae2f1625864ee"},
+    {file = "funcnodes_module-0.1.6-py3-none-any.whl", hash = "sha256:1cc206d6dcd1b76abd47a9cfbee1d1baf47ae237e3c5529f6c2ba9d11cd775f8"},
+    {file = "funcnodes_module-0.1.6.tar.gz", hash = "sha256:34d7ed733bc500d825c2130b0c52fde7042a8a68bb43cccc54de15580fabf368"},
+]
+
+[[package]]
+name = "funcnodes-numpy"
+version = "0.2.2"
+description = ""
+optional = false
+python-versions = "<4.0,>=3.11"
+files = [
+    {file = "funcnodes_numpy-0.2.2-py3-none-any.whl", hash = "sha256:347fe9a53d76d08ae77c8ab792ce749b23ca152d6a733a6a6115fd933daa7fec"},
+    {file = "funcnodes_numpy-0.2.2.tar.gz", hash = "sha256:e0135947d995b0e5f1a626d28752106c469ec55ab967adc4e937354323b659a0"},
 ]
 
 [package.dependencies]
-funcnodes = "*"
-numpy = ">=2.0,<3.0"
+funcnodes = ">=0.3.3"
+numpy = ">=2.0"
 
 [[package]]
 name = "funcnodes-react-flow"
@@ -1759,4 +1770,4 @@ test = ["big-O", "importlib-resources", "jaraco.functools", "jaraco.itertools", 
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<4.0"
-content-hash = "8d6d85ffa61f436d2fe1c279486d4581215dafb88e61f6f7d86f9cd87ceb610c"
+content-hash = "7050b3a9a0816685c6ab4e60f20eb4414a6163e3630ef67928039ec9a10af766"
