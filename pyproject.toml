@@ -1,13 +1,13 @@
 [tool.poetry]
 name = "funcnodes_images"
-version = "0.1.18"
+version = "0.1.19"
 description = ""
 authors = ["Julian Kimmig <julian.kimmig@gmx.net>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
 python = ">=3.11,<4.0"
-funcnodes = ">=0.3"
+funcnodes = "*"
 numpy = "*"
 pillow = "*"
 funcnodes-numpy = "*"
@@ -15,7 +15,13 @@ funcnodes-numpy = "*"
 [tool.poetry.group.dev.dependencies]
 opencv-python-headless = "^4.9.0.80"
 pytest = "*"
+pre-commit = "*"
 
+funcnodes-module = "*"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.plugins."funcnodes.module"]
+module = "funcnodes_images"
+shelf = "funcnodes_images:NODE_SHELF"

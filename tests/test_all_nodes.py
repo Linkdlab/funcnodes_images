@@ -1,11 +1,13 @@
-import unittest
+from all_nodes_test_base import TestAllNodesBase
+import funcnodes as fn
+
 import funcnodes_images as fnimg
 import numpy as np
 from PIL import Image
 import tempfile
 
 
-class TestNodes(unittest.IsolatedAsyncioTestCase):
+class TestAllNodes(TestAllNodesBase):
     def setUp(self) -> None:
         self.img_arr = np.random.randint(0, 255, (100, 100, 3), dtype=np.uint8)
         self.img = Image.fromarray(self.img_arr)
@@ -176,3 +178,27 @@ class TestNodes(unittest.IsolatedAsyncioTestCase):
         img: fnimg.NumpyImageFormat = fromarray.get_output("img").value
         self.assertEqual(img.to_array().shape, self.img_arr.shape)
         np.testing.assert_equal(img.to_array(), self.img_arr)
+
+    async def test_dimensions(self):
+        dim = fnimg.nodes.Dimensions()
+        dim.get_input("img").value = fnimg.PillowImageFormat(self.img)
+        await dim
+        width: int = dim.get_output("width").value
+        height: int = dim.get_output("height").value
+
+        self.assertEqual(width, 100)
+        self.assertEqual(height, 100)
+
+    async def test_to_array(self):
+        toarray = fnimg.nodes.ToArray()
+        toarray.get_input("img").value = fnimg.PillowImageFormat(self.img)
+        await toarray
+        arr: np.ndarray = toarray.get_output("array").value
+
+        self.assertEqual(arr.shape, self.img_arr.shape)
+        np.testing.assert_equal(arr, self.img_arr)
+
+    async def test_show_image(self):
+        show = fnimg.nodes.ShowImage()
+        show.get_input("img").value = fnimg.PillowImageFormat(self.img)
+        await show
