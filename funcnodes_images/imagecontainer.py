@@ -1,18 +1,12 @@
 from abc import ABC, abstractmethod
 from typing import Type, Optional
 import numpy as np
-from typing import Any, TYPE_CHECKING, Generic, TypeVar, Callable, Dict
+from typing import Any, Generic, TypeVar, Callable, Dict
 import io
 from PIL import Image
-import os
 from .utils import calc_new_size, calc_crop_values
 
-from funcnodes.config import update_render_options
-
-if TYPE_CHECKING:
-    from ._numpy import NumpyImageFormat
-    from ._pillow import PillowImageFormat
-
+from funcnodes_core.config import update_render_options
 
 T = TypeVar("T")
 
@@ -74,7 +68,7 @@ class ImageFormat(ABC, Generic[T]):  # noqa: F821
     def __getattribute__(self, name: str) -> Any:
         try:
             return super().__getattribute__(name)
-        except AttributeError as e:
+        except AttributeError:
             if name.startswith("to_"):
                 _to = name[3:]
 
