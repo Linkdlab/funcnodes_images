@@ -1,9 +1,10 @@
 [tool.poetry]
-name = "funcnodes_images"
+name = "funcnodes-images"
 version = "0.2.0"
 description = ""
 authors = ["Julian Kimmig <julian.kimmig@gmx.net>"]
 readme = "README.md"
+license = "MIT"
 
 [tool.poetry.dependencies]
 python = ">=3.11"
