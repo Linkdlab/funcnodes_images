@@ -1,10 +1,17 @@
 [tool.poetry]
 name = "funcnodes-images"
-version = "0.2.0"
-description = ""
+version = "0.2.1"
+description = "Basic functionalities to work with images in Funcnodes"
 authors = ["Julian Kimmig <julian.kimmig@gmx.net>"]
 readme = "README.md"
 license = "MIT"
+
+[tool.poetry.urls]
+homepage  = "https://github.com/Linkdlab/funcnodes_images"
+source  = "https://github.com/Linkdlab/funcnodes_images"
+tracker  = "https://github.com/Linkdlab/funcnodes_images/issues"
+download = "https://pypi.org/project/funcnodes-images/#files"
+
 
 [tool.poetry.dependencies]
 python = ">=3.11"
