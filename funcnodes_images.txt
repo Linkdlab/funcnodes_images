@@ -1,0 +1,746 @@
+# folder tree:
+
+-funcnodes_images
+  - imagecontainer.py
+  - image_nodes.py
+  - utils.py
+  - _numpy.py
+  - _pillow.py
+  - __init__.py
+
+
+
+# imagecontainer.py
+
+from abc import ABC, abstractmethod
+from typing import Type, Optional
+import numpy as np
+from typing import Any, Generic, TypeVar, Callable, Dict
+import io
+from PIL import Image
+from .utils import calc_new_size, calc_crop_values
+
+from funcnodes_core.config import update_render_options
+
+T = TypeVar("T")
+
+
+IMAGE_FORMATS: Dict[str, Type["ImageFormat"]] = {}
+
+
+class ImageFormat(ABC, Generic[T]):  # noqa: F821
+    _to_converters: Dict[
+        "ImageFormat", Dict["ImageFormat", Callable[["ImageFormat"], "ImageFormat"]]
+    ] = {}
+
+    def __init__(self, data: T):
+        self._data: T = data
+
+    @property
+    def data(self) -> T:
+        return self.get_data_copy()
+
+    @abstractmethod
+    def get_data_copy(self) -> T:
+        pass
+
+    @abstractmethod
+    def width(self) -> int:
+        pass
+
+    @abstractmethod
+    def height(self) -> int:
+        pass
+
+    def to(self, cls: Type["ImageFormat"] | str) -> "ImageFormat":
+        if isinstance(cls, str):
+            cls = IMAGE_FORMATS[cls]
+        if self.__class__ == cls:
+            return self
+        if cls in ImageFormat._to_converters[self.__class__]:
+            return self._to_converters[self.__class__][cls](self)
+
+    @classmethod
+    def add_to_converter(
+        self_cls,
+        other_cls: Type["ImageFormat"],
+        converter: Callable[["ImageFormat"], "ImageFormat"],
+    ):
+        if self_cls not in ImageFormat._to_converters:
+            ImageFormat._to_converters[self_cls] = {}
+        ImageFormat._to_converters[self_cls][other_cls] = converter
+
+    def get_to_converter(
+        self, cls: Type["ImageFormat"]
+    ) -> Callable[["ImageFormat"], "ImageFormat"]:
+        if self.__class__ == cls:
+            return lambda x: x
+        if self.__class__ not in ImageFormat._to_converters:
+            ImageFormat._to_converters[self.__class__] = {}
+        return ImageFormat._to_converters[self.__class__].get(cls)
+
+    def __getattribute__(self, name: str) -> Any:
+        try:
+            return super().__getattribute__(name)
+        except AttributeError:
+            if name.startswith("to_"):
+                _to = name[3:]
+
+                if _to in IMAGE_FORMATS:
+                    other = IMAGE_FORMATS[_to]
+                    conv = self.get_to_converter(other)
+                    if conv:
+                        return lambda: conv(self)
+            raise
+
+    @classmethod
+    def from_array(cls, data: np.ndarray):
+        from ._numpy import NumpyImageFormat
+
+        return NumpyImageFormat(data).to(cls)
+
+    def to_array(self) -> np.ndarray:
+        return self.to_np.data
+
+    @classmethod
+    def from_file(cls, path: str):
+        from ._pillow import PillowImageFormat
+
+        img = Image.open(path)
+        return PillowImageFormat(img).to(cls)
+
+    @classmethod
+    def from_bytes(cls, data: bytes):
+        from ._pillow import PillowImageFormat
+
+        buff = io.BytesIO(data)
+        img = Image.open(buff)
+        img.load()
+        buff.close()
+        return PillowImageFormat(img).to(cls)
+
+    def to_jpeg(self, quality=75) -> bytes:
+        img: Image = self.to_img().data
+        img = img.convert("RGB")
+        img_byte_array = io.BytesIO()
+        img.save(img_byte_array, format="JPEG", quality=int(quality))
+        return img_byte_array.getvalue()
+
+    def to_thumbnail(self, size: tuple) -> "ImageFormat[T]":
+        img: Image = self.to_img().data
+        img.thumbnail(size)
+        return self.__class__.from_array(np.array(img))
+
+    def resize(
+        self,
+        w: int = None,
+        h: int = None,
+    ) -> "ImageFormat[T]":
+        img: Image = self.to_img().data
+        new_x, new_y = calc_new_size(img.width, img.height, w, h)
+        img = img.resize((new_x, new_y))
+        return self.__class__.from_array(np.array(img))
+
+    def crop(
+        self,
+        x1: Optional[int] = None,
+        y1: Optional[int] = None,
+        x2: Optional[int] = None,
+        y2: Optional[int] = None,
+    ) -> "ImageFormat[T]":
+        img: Image = self.to_img().data
+        x1, y1, x2, y2 = calc_crop_values(img.width, img.height, x1, y1, x2, y2)
+
+        img = img.crop((x1, y1, x2, y2))
+        return self.__class__.from_array(np.array(img))
+
+    def scale(self, factor: float) -> "ImageFormat[T]":
+        if factor <= 0:
+            raise ValueError("factor must be greater than 0")
+
+        img: Image = self.to_img().data
+        img = img.resize((int(img.width * factor), int(img.height * factor)))
+        return self.__class__.from_array(np.array(img))
+
+
+def register_imageformat(
+    imageformat: Type[ImageFormat], key: str, overwrite=False, _raise=True
+):
+    if not issubclass(imageformat, ImageFormat):
+        raise ValueError("format must be a subclass of ImageFormat")
+    if key in IMAGE_FORMATS:
+        if IMAGE_FORMATS[key] == imageformat:
+            return
+        if not overwrite:
+            if _raise:
+                raise ValueError(
+                    f"key '{key} 'already exists in image_formats as {IMAGE_FORMATS[key]}"
+                )
+            else:
+                return
+    IMAGE_FORMATS[key] = imageformat
+
+    update_render_options(
+        {
+            "typemap": {
+                imageformat: "image",
+            }
+        }
+    )
+
+
+def get_format(key: str) -> Type[ImageFormat]:
+    return IMAGE_FORMATS[key]
+
+
+# image_nodes.py
+
+import funcnodes as fn
+from funcnodes_images import ImageFormat
+from PIL import Image
+from typing import Optional, Tuple
+import io
+from ._pillow import PillowImageFormat, NumpyImageFormat
+from .utils import calc_crop_values
+import numpy as np
+
+
+class ShowImage(fn.Node):
+    node_id = "image.show"
+    node_name = "Show Image"
+
+    default_render_options = {"data": {"src": "img", "type": "image"}}
+
+    img = fn.NodeInput(
+        id="img",
+        type=ImageFormat,
+    )
+
+    async def func(self, img):
+        pass
+
+
+class ResizeImage(fn.Node):
+    node_id = "image.resize"
+    node_name = "Resize Image"
+
+    img = fn.NodeInput(
+        id="img",
+        type=ImageFormat,
+    )
+
+    width = fn.NodeInput(
+        id="width",
+        type=int,
+        required=False,
+    )
+
+    height = fn.NodeInput(
+        id="height",
+        type=int,
+        required=False,
+    )
+
+    resized_img = fn.NodeOutput(
+        id="resized_img",
+        type=ImageFormat,
+    )
+
+    async def func(self, img: ImageFormat, width=None, height=None):
+        out = img.resize(w=width, h=height)
+        self.get_output("resized_img").value = out
+
+        return out
+
+
+class FromBytes(fn.Node):
+    node_id = "image.from_bytes"
+    node_name = "From Bytes"
+
+    data = fn.NodeInput(
+        id="data",
+        type=bytes,
+    )
+
+    img = fn.NodeOutput(
+        id="img",
+        type=ImageFormat,
+    )
+
+    async def func(self, data: bytes):
+        img = PillowImageFormat.from_bytes(data)
+        self.get_output("img").value = img
+        return img
+
+
+class ScaleImage(fn.Node):
+    node_id = "image.scale"
+    node_name = "Scale Image"
+
+    img = fn.NodeInput(
+        id="img",
+        type=ImageFormat,
+    )
+
+    scale = fn.NodeInput(
+        id="scale",
+        type=float,
+    )
+
+    scaled_img = fn.NodeOutput(
+        id="scaled_img",
+        type=ImageFormat,
+    )
+
+    async def func(self, img: ImageFormat, scale: float):
+        out = img.scale(scale)
+        self.get_output("scaled_img").value = out
+
+        return out
+
+
+class CropImage(fn.Node):
+    node_id = "image.crop"
+    node_name = "Crop Image"
+
+    img = fn.NodeInput(
+        id="img",
+        type=ImageFormat,
+    )
+
+    x1 = fn.NodeInput(
+        id="x1",
+        type=int,
+        name="left",
+        default=0,
+        required=False,
+    )
+
+    y1 = fn.NodeInput(
+        id="y1",
+        type=int,
+        name="top",
+        default=0,
+        required=False,
+    )
+
+    x2 = fn.NodeInput(
+        id="x2",
+        type=int,
+        name="right",
+        required=False,
+    )
+
+    y2 = fn.NodeInput(
+        id="y2",
+        type=int,
+        name="bottom",
+        required=False,
+    )
+
+    cropped_img = fn.NodeOutput(
+        id="cropped_img",
+        type=ImageFormat,
+    )
+
+    async def func(
+        self,
+        img: ImageFormat,
+        x1: Optional[int] = None,
+        y1: Optional[int] = None,
+        x2: Optional[int] = None,
+        y2: Optional[int] = None,
+    ):
+        x1, y1, x2, y2 = calc_crop_values(img.width(), img.height(), x1, y1, x2, y2)
+        out = img.crop(x1, y1, x2, y2)
+
+        self.get_input("x1").set_value(x1, does_trigger=False)
+        self.get_input("y1").set_value(y1, does_trigger=False)
+        self.get_input("x2").set_value(x2, does_trigger=False)
+        self.get_input("y2").set_value(y2, does_trigger=False)
+        self.get_output("cropped_img").value = out
+
+        return out
+
+
+class ToArray(fn.Node):
+    node_id = "image.to_array"
+    node_name = "To Array"
+
+    img = fn.NodeInput(
+        id="img",
+        type=ImageFormat,
+    )
+
+    array = fn.NodeOutput(
+        id="array",
+        type="numpy.ndarray",
+    )
+
+    async def func(self, img: ImageFormat):
+        out = img.to_array()
+        self.get_output("array").value = out
+
+        return out
+
+
+class Dimensions(fn.Node):
+    node_id = "image.dimensions"
+    node_name = "Dimensions"
+
+    img = fn.NodeInput(
+        id="img",
+        type=ImageFormat,
+    )
+
+    width = fn.NodeOutput(
+        id="width",
+        type=int,
+    )
+
+    height = fn.NodeOutput(
+        id="height",
+        type=int,
+    )
+
+    async def func(self, img: ImageFormat):
+        self.get_output("width").value = img.width()
+        self.get_output("height").value = img.height()
+        return img.width(), img.height()
+
+
+class FromArray(fn.Node):
+    node_id = "image.from_array"
+    node_name = "From Array"
+
+    data = fn.NodeInput(
+        id="data",
+        type="numpy.ndarray",
+    )
+
+    img = fn.NodeOutput(
+        id="img",
+        type=ImageFormat,
+    )
+
+    async def func(self, data):
+        img = NumpyImageFormat(data)
+        self.get_output("img").value = img
+        return img
+
+
+@fn.NodeDecorator(
+    id="image.get_channels",
+    name="Get Channels",
+    outputs=[
+        {
+            "name": "red",
+        },
+        {
+            "name": "green",
+        },
+        {
+            "name": "blue",
+        },
+    ],
+)
+def get_channels(
+    img: ImageFormat, as_rgb: bool = False
+) -> Tuple[NumpyImageFormat, NumpyImageFormat, NumpyImageFormat]:
+    rgb = img.to_np().data
+    if rgb.shape[2] == 1:
+        r = g = b = rgb[:, :, 0]
+    else:
+        r, g, b = rgb[:, :, 0], rgb[:, :, 1], rgb[:, :, 2]
+    if not as_rgb:
+        return NumpyImageFormat(r), NumpyImageFormat(g), NumpyImageFormat(b)
+    rz = np.zeros_like(r, shape=(r.shape[0], r.shape[1], 3))
+    rz[:, :, 0] = r
+    gz = np.zeros_like(g, shape=(g.shape[0], g.shape[1], 3))
+    gz[:, :, 1] = g
+    bz = np.zeros_like(b, shape=(b.shape[0], b.shape[1], 3))
+    bz[:, :, 2] = b
+
+    return NumpyImageFormat(rz), NumpyImageFormat(gz), NumpyImageFormat(bz)
+
+
+@fn.NodeDecorator(
+    id="image.get_histograms",
+    name="Get Histograms",
+    outputs=[
+        {
+            "name": "red",
+        },
+        {
+            "name": "green",
+        },
+        {
+            "name": "blue",
+        },
+    ],
+)
+def histograms(img: ImageFormat) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    data = img.to_np().to_rgb_uint8()
+
+    return (
+        np.histogram(data[:, :, 0], bins=256, range=(0, 256))[0],
+        np.histogram(data[:, :, 1], bins=256, range=(0, 256))[0],
+        np.histogram(data[:, :, 2], bins=256, range=(0, 256))[0],
+    )
+
+
+NODE_SHELF = fn.Shelf(
+    name="Images",
+    nodes=[
+        ShowImage,
+        ResizeImage,
+        FromBytes,
+        ScaleImage,
+        CropImage,
+        ToArray,
+        FromArray,
+        Dimensions,
+        get_channels,
+        histograms,
+    ],
+    subshelves=[],
+    description="Basic Image processing nodes",
+)
+
+
+# utils.py
+
+from typing import Optional, Tuple
+
+
+def calc_new_size(cur_x, cur_y, target_w: int, target_h: int) -> tuple:
+    if target_w is not None and target_w < 1:
+        target_w = None
+    if target_h is not None and target_h < 1:
+        target_h = None
+    if target_w is None and target_h is None:
+        raise ValueError("At least one of w or h must be given")
+    if target_w is None:
+        ratio = target_h / cur_y
+        new_x, new_y = int(cur_x * ratio), target_h
+    elif target_h is None:
+        ratio = target_w / cur_x
+        new_x, new_y = target_w, int(cur_y * ratio)
+    else:
+        new_x, new_y = target_w, target_h
+
+    return new_x, new_y
+
+
+def calc_crop_values(
+    img_width: int,
+    img_height: int,
+    x1: Optional[int] = None,
+    y1: Optional[int] = None,
+    x2: Optional[int] = None,
+    y2: Optional[int] = None,
+) -> Tuple[int, int, int, int]:
+    if x1 is None:
+        x1 = 0
+    if y1 is None:
+        y1 = 0
+    if x2 is None:
+        x2 = img_width
+    if y2 is None:
+        y2 = img_height
+
+    if x1 < 0 or x1 > img_width:
+        x1 = x1 % img_width
+    if y1 < 0 or y1 > img_height:
+        y1 = y1 % img_height
+    if x2 < 0 or x2 > img_width:
+        x2 = x2 % img_width
+    if y2 < 0 or y2 > img_height:
+        y2 = y2 % img_height
+
+    return x1, y1, x2, y2
+
+
+# _numpy.py
+
+from .imagecontainer import ImageFormat, register_imageformat
+
+
+import numpy as np
+
+
+class NumpyImageFormat(ImageFormat[np.ndarray]):
+    def __init__(self, arr: np.ndarray) -> None:
+        # check if arr is a numpy array
+        if not isinstance(arr, np.ndarray):
+            raise TypeError("arr must be a numpy array")
+        # make shure arr has 3 dimensions or fail
+
+        if len(arr.shape) != 3:
+            if len(arr.shape) == 2:
+                arr = np.expand_dims(arr, axis=2)
+            else:
+                raise ValueError("arr must have 3 dimensions")
+
+        # allow 3 or 1 channel images
+        if arr.shape[2] != 3 and arr.shape[2] != 1 and arr.shape[2] != 4:
+            raise ValueError(
+                f"arr must have 1,3 or 4 channels but has shape {arr.shape}"
+            )
+
+        super().__init__(arr)
+
+    def get_data_copy(self) -> np.ndarray:
+        return self._data.copy()
+
+    def width(self) -> int:
+        return self._data.shape[1]
+
+    def height(self) -> int:
+        return self._data.shape[0]
+
+    def to_uint8(self) -> np.ndarray:
+        d = self.data
+        if d.dtype == np.uint8:
+            return d
+
+        _max = d.max()
+        _min = d.min()
+
+        # if in range 0-255
+        if _max <= 255 and _min >= 0 and _max > 1:
+            return d.astype(np.uint8)
+
+        # if not in range 0-1 -> normalize
+        if _max > 1 or _min < 0:
+            d = d - _min
+            if _max != _min:
+                d = d / (_max - _min)
+
+        return (d * 255).astype(np.uint8)
+
+    def to_rgb_or_rgba_uint8(self) -> np.ndarray:
+        d = self.to_uint8()
+        if d.shape[2] == 3 or d.shape[2] == 4:
+            return d
+
+        return np.repeat(d, 3, axis=2)
+
+    def to_rgb_uint8(self) -> np.ndarray:
+        d = self.to_uint8()
+        if d.shape[2] == 3:
+            return d
+
+        if d.shape[2] == 4:
+            return d[:, :, :3]
+
+        return np.repeat(d, 3, axis=2)
+
+    def to_rgba_uint8(self) -> np.ndarray:
+        d = self.to_uint8()
+        if d.shape[2] == 4:
+            return d
+
+        if d.shape[2] == 3:
+            return np.concatenate(
+                [d, np.full(d.shape[:2] + (1,), 255, dtype=np.uint8)], axis=2
+            )
+
+        return np.repeat(d, 4, axis=2)
+
+    def to_array(self) -> np.ndarray:
+        return self.get_data_copy()
+
+
+register_imageformat(NumpyImageFormat, "np")
+
+
+# _pillow.py
+
+from PIL import Image
+from typing import TYPE_CHECKING, Generic
+import numpy as np
+from .imagecontainer import ImageFormat, register_imageformat
+from ._numpy import NumpyImageFormat
+
+
+class PillowImageFormat(ImageFormat[Image.Image]):
+    def __init__(self, img: Image.Image) -> None:
+        if not isinstance(img, Image.Image):
+            raise TypeError("img must be a PIL Image")
+        super().__init__(img)
+
+    def to_array(self) -> np.ndarray:
+        return np.array(self._data)
+
+    def get_data_copy(self) -> Image.Image:
+        return self._data.copy()
+
+    def width(self) -> int:
+        return self._data.width
+
+    def height(self) -> int:
+        return self._data.height
+
+
+def pillow_to_numpy(img: PillowImageFormat) -> NumpyImageFormat:
+    return NumpyImageFormat(np.array(img.data))
+
+
+PillowImageFormat.add_to_converter(NumpyImageFormat, pillow_to_numpy)
+
+
+def numpy_to_pil(img: NumpyImageFormat) -> PillowImageFormat:
+    return PillowImageFormat(Image.fromarray(img.to_rgb_or_rgba_uint8()))
+
+
+NumpyImageFormat.add_to_converter(PillowImageFormat, numpy_to_pil)
+
+
+register_imageformat(PillowImageFormat, "img")
+
+
+# __init__.py
+
+from .imagecontainer import register_imageformat, get_format, ImageFormat
+from ._numpy import NumpyImageFormat
+from ._pillow import PillowImageFormat
+import funcnodes as fn
+from exposedfunctionality.function_parser.types import add_type
+from . import image_nodes as nodes
+import funcnodes_numpy as fn_numpy  # noqa: F401 # import for type hinting
+
+add_type(ImageFormat, "ImageFormat")
+
+FUNCNODES_RENDER_OPTIONS: fn.RenderOptions = {
+    "typemap": {
+        ImageFormat: "image",
+    },
+}
+
+
+def imageFormatEncoder(obj: ImageFormat, preview=False):
+    if isinstance(obj, ImageFormat):
+        if preview:
+            return obj.to_thumbnail((200, 200)).to_jpeg(), True
+        return obj.to_jpeg(), True
+    return obj, False
+
+
+fn.JSONEncoder.add_encoder(imageFormatEncoder)
+
+NODE_SHELF = nodes.NODE_SHELF
+
+__all__ = [
+    "register_imageformat",
+    "NumpyImageFormat",
+    "get_format",
+    "PillowImageFormat",
+    "ImageFormat",
+    "nodes",
+    "FUNCNODES_RENDER_OPTIONS",
+    "NODE_SHELF",
+]
+
+
+__version__ = "0.2.0"
