@@ -1,5 +1,4 @@
 from all_nodes_test_base import TestAllNodesBase
-import funcnodes as fn
 
 import funcnodes_images as fnimg
 import numpy as np
@@ -202,3 +201,10 @@ class TestAllNodes(TestAllNodesBase):
         show = fnimg.nodes.ShowImage()
         show.get_input("img").value = fnimg.PillowImageFormat(self.img)
         await show
+
+    async def test_to_jpeg(self):
+        tojpeg = fnimg.nodes.to_jpeg()
+        tojpeg.get_input("img").value = fnimg.PillowImageFormat(self.img)
+        tojpeg.get_input("quality").value = 95
+        await tojpeg
+        # jpeg: bytes = tojpeg.get_output("jpeg").value

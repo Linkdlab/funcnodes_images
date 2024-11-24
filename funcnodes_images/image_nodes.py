@@ -1,8 +1,6 @@
 import funcnodes as fn
 from funcnodes_images import ImageFormat
-from PIL import Image
 from typing import Optional, Tuple
-import io
 from ._pillow import PillowImageFormat, NumpyImageFormat
 from .utils import calc_crop_values
 import numpy as np
@@ -292,6 +290,22 @@ def histograms(img: ImageFormat) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     )
 
 
+@fn.NodeDecorator(
+    id="image.to_jpeg",
+    name="To JPEG",
+    outputs=[
+        {
+            "name": "jpeg",
+        },
+    ],
+    default_io_options={
+        "quality": {"value_options": {"min": 0, "max": 100, "step": 1}}
+    },
+)
+def to_jpeg(img: ImageFormat, quality: int) -> bytes:
+    return img.to_jpeg(quality)
+
+
 NODE_SHELF = fn.Shelf(
     name="Images",
     nodes=[
@@ -305,6 +319,7 @@ NODE_SHELF = fn.Shelf(
         Dimensions,
         get_channels,
         histograms,
+        to_jpeg,
     ],
     subshelves=[],
     description="Basic Image processing nodes",
