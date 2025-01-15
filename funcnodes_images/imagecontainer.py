@@ -112,6 +112,13 @@ class ImageFormat(ABC, Generic[T]):  # noqa: F821
         img.save(img_byte_array, format="JPEG", quality=int(quality))
         return img_byte_array.getvalue()
 
+    def to_png(self) -> bytes:
+        img: Image = self.to_img().data
+        img = img.convert("RGB")
+        img_byte_array = io.BytesIO()
+        img.save(img_byte_array, format="PNG")
+        return img_byte_array.getvalue()
+
     def to_thumbnail(self, size: tuple) -> "ImageFormat[T]":
         img: Image = self.to_img().data
         img.thumbnail(size)

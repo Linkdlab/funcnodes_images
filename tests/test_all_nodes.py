@@ -4,6 +4,7 @@ import funcnodes_images as fnimg
 import numpy as np
 from PIL import Image
 import tempfile
+import io
 
 
 class TestAllNodes(TestAllNodesBase):
@@ -208,3 +209,10 @@ class TestAllNodes(TestAllNodesBase):
         tojpeg.get_input("quality").value = 95
         await tojpeg
         # jpeg: bytes = tojpeg.get_output("jpeg").value
+
+    async def test_to_png(self):
+        topng = fnimg.nodes.to_png()
+        topng.get_input("img").value = fnimg.PillowImageFormat(self.img)
+        await topng
+        with Image.open(io.BytesIO(topng["png"].value)) as img:
+            self.assertEqual(img.format, "PNG")
