@@ -306,6 +306,19 @@ def to_jpeg(img: ImageFormat, quality: int) -> bytes:
     return img.to_jpeg(quality)
 
 
+@fn.NodeDecorator(
+    id="image.to_png",
+    name="To PNG",
+    outputs=[
+        {
+            "name": "png",
+        },
+    ],
+)
+def to_png(img: ImageFormat) -> bytes:
+    return img.to_png()
+
+
 NODE_SHELF = fn.Shelf(
     name="Images",
     nodes=[
