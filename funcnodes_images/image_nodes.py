@@ -47,6 +47,8 @@ class ResizeImage(fn.Node):
         type=ImageFormat,
     )
 
+    default_render_options = {"data": {"src": "resized_img", "type": "image"}}
+
     async def func(self, img: ImageFormat, width=None, height=None):
         out = img.resize(w=width, h=height)
         self.get_output("resized_img").value = out
@@ -67,6 +69,8 @@ class FromBytes(fn.Node):
         id="img",
         type=ImageFormat,
     )
+
+    default_render_options = {"data": {"src": "img", "type": "image"}}
 
     async def func(self, data: bytes):
         img = PillowImageFormat.from_bytes(data)
@@ -92,6 +96,8 @@ class ScaleImage(fn.Node):
         id="scaled_img",
         type=ImageFormat,
     )
+
+    default_render_options = {"data": {"src": "scaled_img", "type": "image"}}
 
     async def func(self, img: ImageFormat, scale: float):
         out = img.scale(scale)
@@ -143,6 +149,8 @@ class CropImage(fn.Node):
         id="cropped_img",
         type=ImageFormat,
     )
+
+    default_render_options = {"data": {"src": "cropped_img", "type": "image"}}
 
     async def func(
         self,
@@ -223,6 +231,8 @@ class FromArray(fn.Node):
         id="img",
         type=ImageFormat,
     )
+
+    default_render_options = {"data": {"src": "img", "type": "image"}}
 
     async def func(self, data):
         img = NumpyImageFormat(data)
