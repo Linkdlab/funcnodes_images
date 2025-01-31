@@ -197,6 +197,7 @@ class TestAllNodes(TestAllNodesBase):
 
         self.assertEqual(arr.shape, self.img_arr.shape)
         np.testing.assert_equal(arr, self.img_arr)
+        np.testing.assert_equal(np.asarray(self.img), self.img_arr)
 
     async def test_show_image(self):
         show = fnimg.nodes.ShowImage()
