@@ -88,8 +88,13 @@ class ImageFormat(ABC, Generic[T]):  # noqa: F821
     def to_array(self) -> np.ndarray:
         return self.to_np().data
 
-    def __array__(self):
-        return self.to_array()
+    def __array__(self, dtype=None, copy=None):
+        arr = self.to_array()
+        if dtype:
+            arr = arr.astype(dtype)
+        if copy is not None and not copy:
+            raise ValueError("copy=False is not supported")
+        return arr
 
     @classmethod
     def from_file(cls, path: str):
