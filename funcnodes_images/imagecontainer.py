@@ -86,7 +86,10 @@ class ImageFormat(ABC, Generic[T]):  # noqa: F821
         return NumpyImageFormat(data).to(cls)
 
     def to_array(self) -> np.ndarray:
-        return self.to_np.data
+        return self.to_np().data
+
+    def __array__(self):
+        return self.to_array()
 
     @classmethod
     def from_file(cls, path: str):
