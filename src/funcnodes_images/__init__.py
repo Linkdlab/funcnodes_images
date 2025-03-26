@@ -25,6 +25,19 @@ def imageFormatEncoder(obj: ImageFormat, preview=False):
 
 fn.JSONEncoder.add_encoder(imageFormatEncoder)
 
+
+def imageFormatbytesEncoder(obj: ImageFormat, preview=False) -> fn.BytesEncdata:
+    if isinstance(obj, ImageFormat):
+        return fn.BytesEncdata(
+            data=(obj.to_thumbnail((200, 200)) if preview else obj).to_jpeg(),
+            mime="image/jpeg",
+            handeled=True,
+        )
+    return fn.BytesEncdata(data=obj, handeled=False)
+
+
+fn.ByteEncoder.add_encoder(imageFormatbytesEncoder, enc_cls=[ImageFormat])
+
 NODE_SHELF = nodes.NODE_SHELF
 
 __all__ = [
@@ -39,4 +52,4 @@ __all__ = [
 ]
 
 
-__version__ = "0.2.4"
+__version__ = "0.2.5"

@@ -1,14 +1,11 @@
 import unittest
 from funcnodes_images.imagecontainer import (
-    ImageFormat,
     get_format,
-    register_imageformat,
 )
 from funcnodes_images._numpy import NumpyImageFormat
 from funcnodes_images._pillow import PillowImageFormat
 from PIL import Image
 import numpy as np
-import io
 
 
 class TestImageFormat(unittest.TestCase):
