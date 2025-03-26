@@ -1,5 +1,4 @@
 from PIL import Image
-from typing import TYPE_CHECKING, Generic
 import numpy as np
 from .imagecontainer import ImageFormat, register_imageformat
 from ._numpy import NumpyImageFormat
