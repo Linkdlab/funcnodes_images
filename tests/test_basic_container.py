@@ -21,7 +21,7 @@ class TestNumpyImageFormat(unittest.TestCase):
     def test_wrong_shape(self):
         data = np.random.rand(100, 100, 2)
         with self.assertRaises(ValueError):
-            fmt = fnimg.NumpyImageFormat(data)
+            _ = fnimg.NumpyImageFormat(data)
 
     def test_to_uint8(self):
         data = np.random.rand(100, 100, 1)
