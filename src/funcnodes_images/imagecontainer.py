@@ -136,9 +136,10 @@ class ImageFormat(ABC, Generic[T]):  # noqa: F821
         self,
         w: int = None,
         h: int = None,
+        keep_ratio: bool = True,
     ) -> "ImageFormat[T]":
         img: Image = self.to_img().data
-        new_x, new_y = calc_new_size(img.width, img.height, w, h)
+        new_x, new_y = calc_new_size(img.width, img.height, w, h, keep_ratio=keep_ratio)
         img = img.resize((new_x, new_y))
         return self.__class__.from_array(np.array(img))
 

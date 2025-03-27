@@ -1,7 +1,9 @@
 from typing import Optional, Tuple
 
 
-def calc_new_size(cur_x, cur_y, target_w: int, target_h: int) -> tuple:
+def calc_new_size(
+    cur_w, cur_h, target_w: int, target_h: int, keep_ratio=False
+) -> tuple:
     if target_w is not None and target_w < 1:
         target_w = None
     if target_h is not None and target_h < 1:
@@ -9,15 +11,22 @@ def calc_new_size(cur_x, cur_y, target_w: int, target_h: int) -> tuple:
     if target_w is None and target_h is None:
         raise ValueError("At least one of w or h must be given")
     if target_w is None:
-        ratio = target_h / cur_y
-        new_x, new_y = int(cur_x * ratio), target_h
+        ratio = target_h / cur_h
+        target_w = int(cur_w * ratio)
     elif target_h is None:
-        ratio = target_w / cur_x
-        new_x, new_y = target_w, int(cur_y * ratio)
-    else:
-        new_x, new_y = target_w, target_h
+        ratio = target_w / cur_w
+        target_h = int(cur_h * ratio)
 
-    return new_x, new_y
+    if keep_ratio:
+        ratio_w = target_w / cur_w
+        ratio_h = target_h / cur_h
+        ratio = min(ratio_w, ratio_h)
+        target_w = int(cur_w * ratio)
+        target_h = int(cur_h * ratio)
+
+    new_w, new_h = target_w, target_h
+
+    return new_w, new_h
 
 
 def calc_crop_values(
