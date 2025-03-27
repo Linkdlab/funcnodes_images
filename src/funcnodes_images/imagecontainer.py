@@ -114,21 +114,21 @@ class ImageFormat(ABC, Generic[T]):  # noqa: F821
         return PillowImageFormat(img).to(cls)
 
     def to_jpeg(self, quality=75) -> bytes:
-        img: Image = self.to_img().data
+        img: Image.Image = self.to_img().data
         img = img.convert("RGB")
         img_byte_array = io.BytesIO()
         img.save(img_byte_array, format="JPEG", quality=int(quality))
         return img_byte_array.getvalue()
 
     def to_png(self) -> bytes:
-        img: Image = self.to_img().data
+        img: Image.Image = self.to_img().data
         img = img.convert("RGB")
         img_byte_array = io.BytesIO()
         img.save(img_byte_array, format="PNG")
         return img_byte_array.getvalue()
 
     def to_thumbnail(self, size: tuple) -> "ImageFormat[T]":
-        img: Image = self.to_img().data
+        img: Image.Image = self.to_img().data
         img.thumbnail(size)
         return self.__class__.from_array(np.array(img))
 
@@ -138,7 +138,7 @@ class ImageFormat(ABC, Generic[T]):  # noqa: F821
         h: int = None,
         keep_ratio: bool = True,
     ) -> "ImageFormat[T]":
-        img: Image = self.to_img().data
+        img: Image.Image = self.to_img().data
         new_x, new_y = calc_new_size(img.width, img.height, w, h, keep_ratio=keep_ratio)
         img = img.resize((new_x, new_y))
         return self.__class__.from_array(np.array(img))
@@ -150,7 +150,7 @@ class ImageFormat(ABC, Generic[T]):  # noqa: F821
         x2: Optional[int] = None,
         y2: Optional[int] = None,
     ) -> "ImageFormat[T]":
-        img: Image = self.to_img().data
+        img: Image.Image = self.to_img().data
         x1, y1, x2, y2 = calc_crop_values(img.width, img.height, x1, y1, x2, y2)
 
         img = img.crop((x1, y1, x2, y2))
@@ -160,7 +160,7 @@ class ImageFormat(ABC, Generic[T]):  # noqa: F821
         if factor <= 0:
             raise ValueError("factor must be greater than 0")
 
-        img: Image = self.to_img().data
+        img: Image.Image = self.to_img().data
         img = img.resize((int(img.width * factor), int(img.height * factor)))
         return self.__class__.from_array(np.array(img))
 
