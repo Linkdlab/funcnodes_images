@@ -35,11 +35,25 @@ class TestAllNodes(TestAllNodesBase):
         resize.get_input("width").value = 50
         resize.get_input("height").value = 50
 
-        import asyncio
-
-        await asyncio.sleep(1)
+        await resize
         img: fnimg.PillowImageFormat = resize.get_output("resized_img").value
         self.assertEqual(img.to_array().shape, (50, 50, 3))
+
+        resize.get_input("width").value = 50
+        resize.get_input("height").value = 90
+        resize.get_input("keep_ratio").value = False
+        await resize
+        self.assertEqual(
+            resize.get_output("resized_img").value.to_array().shape, (90, 50, 3)
+        )
+
+        resize.get_input("width").value = 40
+        resize.get_input("height").value = 90
+        resize.get_input("keep_ratio").value = True
+        await resize
+        self.assertEqual(
+            resize.get_output("resized_img").value.to_array().shape, (40, 40, 3)
+        )
 
     async def test_crop(self):
         crop = fnimg.nodes.CropImage()

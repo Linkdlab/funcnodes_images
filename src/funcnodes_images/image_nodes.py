@@ -42,6 +42,12 @@ class ResizeImage(fn.Node):
         required=False,
     )
 
+    keep_ratio = fn.NodeInput(
+        type=bool,
+        default=True,
+        required=False,
+    )
+
     resized_img = fn.NodeOutput(
         id="resized_img",
         type=ImageFormat,
@@ -49,8 +55,8 @@ class ResizeImage(fn.Node):
 
     default_render_options = {"data": {"src": "resized_img", "type": "image"}}
 
-    async def func(self, img: ImageFormat, width=None, height=None):
-        out = img.resize(w=width, h=height)
+    async def func(self, img: ImageFormat, width=None, height=None, keep_ratio=True):
+        out = img.resize(w=width, h=height, keep_ratio=keep_ratio)
         self.get_output("resized_img").value = out
 
         return out
